@@ -10,7 +10,7 @@ import { download } from '../lib/gpx.js'
 import { useToast } from '../hooks/useToast.jsx'
 
 export default function Planner({ navigate }) {
-  const { segments, plan, setPlan } = useApp()
+  const { segments, plan, setPlan, journal } = useApp()
   const toast = useToast()
   const [draft, setDraft] = useState({ ...DEFAULT_PLAN, ...plan, startDate: plan.startDate || toISODate(new Date()) })
   const [showTable, setShowTable] = useState(!!plan.startDate)
@@ -21,6 +21,13 @@ export default function Planner({ navigate }) {
   const startMonth = new Date(draft.startDate).getMonth()
 
   const savePlan = () => { setPlan(draft); setShowTable(true); toast('התוכנית נשמרה במכשיר ✓'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const measuredPace = useMemo(() => { const k = journal.map((e) => parseFloat(e.km)).filter((x) => x > 0); return k.length ? Math.round(k.reduce((a, b) => a + b, 0) / k.length) : null }, [journal])
+  const cacheMessage = () => {
+    if (!preview?.caches?.length) return
+    const lines = preview.caches.map((c) => `• יום ${c.day} · ${fmtDate(c.date)} – ${c.title} → לינה: ${c.overnight}`)
+    const msg = `שלום, אשמח להזמין הטמנות מים לשביל ישראל (${draft.direction === 'sobo' ? 'צפון→דרום' : 'דרום→צפון'}).\nנקודות ותאריכים:\n${lines.join('\n')}\nכמות: ___ ליטר לנקודה עבור ___ מטיילים.\nתודה!`
+    navigator.clipboard?.writeText(msg); toast('הודעת הזמנת הטמנות הועתקה – שלחו לספק')
+  }
   const exportIcs = () => { download('shvil-israel.ics', itineraryToICS(preview.days), 'text/calendar'); toast('קובץ יומן הורד') }
   const exportText = async () => {
     const t = preview.days.map((d) => `יום ${d.day} · ${fmtDate(d.date)} · ${d.rest ? 'מנוחה' : `${d.title} · ${d.km} ק"מ · לינה: ${d.overnight}`}`).join('\n')
@@ -83,6 +90,7 @@ export default function Planner({ navigate }) {
             </select>
           </div>
         </div>
+        {measuredPace && measuredPace !== draft.dailyKm && <Alert kind="info">הקצב הממוצע שלכם לפי היומן הוא <b>{measuredPace} ק"מ/יום</b>. <button className="linkbtn" onClick={() => set('dailyKm', measuredPace)}>עדכנו את התוכנית לפי הקצב האמיתי ←</button></Alert>}
         <SeasonStrip month={startMonth} days={preview?.summary.days || 50} />
         <button className="btn btn--primary btn--block" onClick={savePlan}>שמירת התוכנית ובניית לו"ז</button>
       </div>
@@ -98,6 +106,13 @@ export default function Planner({ navigate }) {
             <Stat value={`₪${preview.summary.budget.toLocaleString()}`} label="תקציב משוער" />
           </div>
           <p className="small muted center">סיום משוער: <b>{fmtDateLong(preview.summary.endDate)}</b>{preview.summary.cacheDays ? ` · ${preview.summary.cacheDays} ימים עם הטמנת מים` : ''}</p>
+          {preview.caches?.length > 0 && (
+            <div className="card card--glow">
+              <div className="card__title"><Icon name="water" />תכנון הטמנות מים ({preview.caches.length} ימים)</div>
+              <div className="stack" style={{ gap: 4 }}>{preview.caches.map((c) => <div key={c.day} className="small">💧 יום {c.day} · {fmtDate(c.date)} – {c.overnight}</div>)}</div>
+              <div className="row mt" style={{ gap: 6 }}><button className="btn btn--sm btn--primary" onClick={cacheMessage}>📋 הודעת הזמנה לספק הטמנות</button><button className="btn btn--sm" onClick={() => navigate('guide/water')}>ספקי הטמנה ←</button></div>
+            </div>
+          )}
           {preview.summary.seasonIssues > 0 && <Alert kind="danger" icon="warn"><b>{preview.summary.seasonIssues} ימים נופלים בעונה מסוכנת/קשה</b> (חום קיצוני בנגב או שרב). שקלו להזיז את תאריך היציאה או להפוך כיוון. פרטים בטבלה למטה.</Alert>}
 
           <Section title="לוח זמנים יומי" action={<div className="row" style={{ gap: 6 }}><button className="btn btn--sm" onClick={exportIcs}>📅 ליומן</button><button className="btn btn--sm" onClick={exportText}><Icon name="share" size={16} /></button><button className="btn btn--sm no-print" onClick={() => window.print()}>🖨️</button></div>}>

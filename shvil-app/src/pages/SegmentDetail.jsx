@@ -8,12 +8,18 @@ import { navLinks, formatCoord } from '../lib/geo.js'
 import { waypointsToGPX, download } from '../lib/gpx.js'
 import { useToast } from '../hooks/useToast.jsx'
 import lodging from '../data/lodging.json'
+import { gearFor } from '../lib/gear.js'
+import { HE_MONTHS } from '../lib/dates.js'
 
 export default function SegmentDetail({ id, navigate }) {
   const { segments, done, toggleDone, notes, setNotes, prefs } = useApp()
   const toast = useToast()
   const seg = segments.find((s) => s.id === Number(id))
   const [tab, setTab] = useState('info')
+  const [month, setMonth] = useState(new Date().getMonth())
+  const [temp, setTemp] = useState(24)
+  const [weight, setWeight] = useState(70)
+  const gear = useMemo(() => gearFor(seg, month), [seg, month])
   const idx = segments.findIndex((s) => s.id === Number(id))
   const prev = segments[idx - 1], next = segments[idx + 1]
   const fit = useMemo(() => seg?.start?.lat && seg?.end?.lat ? { bounds: [[seg.start.lat, seg.start.lon], [seg.end.lat, seg.end.lon]] } : null, [seg])
@@ -59,7 +65,7 @@ export default function SegmentDetail({ id, navigate }) {
       {seg.firing_zone && <Alert kind="danger" icon="warn"><b>שטח אש:</b> {seg.firing_zone}</Alert>}
 
       <div className="segmented" style={{ alignSelf: 'center' }}>
-        {[['info', 'מידע'], ['lodging', 'לינה ומים'], ['map', 'מפה'], ['notes', 'הערות שלי']].map(([k, v]) => <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}>{v}</button>)}
+        {[['info', 'מידע'], ['lodging', 'לינה ומים'], ['gear', 'ציוד'], ['map', 'מפה'], ['notes', 'הערות שלי']].map(([k, v]) => <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}>{v}</button>)}
       </div>
 
       {tab === 'info' && (
@@ -100,12 +106,32 @@ export default function SegmentDetail({ id, navigate }) {
             <p>{seg.water?.summary_he || 'אין מידע'}</p>
             {seg.water?.sources?.length > 0 && <ul className="mt">{seg.water.sources.map((w, i) => <li key={i}>{w}</li>)}</ul>}
           </div>
+          <div className="card card--glow">
+            <div className="card__title"><Icon name="water" />מחשבון מים למקטע</div>
+            <div className="field"><label>טמפרטורה מרבית צפויה: <b>{temp}°C</b></label><input className="range" type="range" min={5} max={45} value={temp} onChange={(e) => setTemp(Number(e.target.value))} /></div>
+            <div className="field"><label>משקל גוף: <b>{weight} ק"ג</b></label><input className="range" type="range" min={40} max={120} value={weight} onChange={(e) => setWeight(Number(e.target.value))} /></div>
+            {(() => {
+              const hours = seg.hours || seg.distance_km / 3.5
+              const perHour = (0.45 + Math.max(0, temp - 18) * 0.035) * (weight / 70) * (seg.difficulty >= 3 ? 1.15 : 1)
+              const walk = hours * perHour
+              const camp = seg.water?.availability === 'none' || seg.water_caching_needed ? 2.5 : 1
+              const total = walk + camp
+              return (
+                <div className="stack mt">
+                  <div className="grid-3"><Stat value={walk.toFixed(1)} label="ל' בהליכה" /><Stat value={camp.toFixed(1)} label="ל' לערב/בישול" /><Stat value={Math.ceil(total * 2) / 2} label="ל' לשאת" /></div>
+                  {total > 6.5 && <Alert kind="warn" icon="water">יותר מ-6.5 ליטר – שקלו הטמנה באמצע המקטע, יציאה לפני הזריחה, או פיצול המקטע.</Alert>}
+                  {temp >= 32 && <Alert kind="danger" icon="warn">מעל 32°C: סכנת מכת חום. לא לצאת למקטע מדברי ארוך.</Alert>}
+                  <p className="tiny muted">הערכה: ~0.45 ל'/שעה ב-18°C, +0.1 ל'/שעה לכל 3°C נוספים, מותאם למשקל ולקושי. לא תחליף לשיקול דעת.</p>
+                </div>
+              )
+            })()}
+          </div>
           <div className="card">
             <div className="card__title"><Icon name="bed" />לינה בסיום המקטע</div>
             {seg.overnight?.summary_he && <p className="mb">{seg.overnight.summary_he}</p>}
             <div className="stack" style={{ gap: 8 }}>
               {seg.overnight?.night_camp && <Row ico="⛺" t="חניון לילה / לינת שטח" v={seg.overnight.night_camp} />}
-              {seg.overnight?.trail_angels && <Row ico="😇" t="מלאכי שביל" v={seg.overnight.trail_angels} />}
+              {seg.overnight?.trail_angels && <Row ico="😇" t="מלאכי שביל" v={<>{seg.overnight.trail_angels} <button className="linkbtn" onClick={() => navigate('guide/angels')}>← למדריך ולאנשי הקשר שלי</button></>} />}
               {seg.overnight?.field_school && <Row ico="🏫" t="בית ספר שדה / אכסניה" v={seg.overnight.field_school} />}
               {seg.overnight?.paid && <Row ico="🏨" t="לינה בתשלום" v={seg.overnight.paid} />}
             </div>
@@ -117,6 +143,26 @@ export default function SegmentDetail({ id, navigate }) {
               {nearbyCamps.map((c, i) => <div key={i} className="small mt"><b>{c.name_he}</b> – {c.facilities_he || c.notes_he || ''}</div>)}
             </div>
           )}
+        </div>
+      )}
+
+      {tab === 'gear' && gear && (
+        <div className="stack">
+          <div className="field"><label>ציוד מומלץ למקטע זה לפי חודש</label>
+            <select className="select" value={month} onChange={(e) => setMonth(Number(e.target.value))}>{HE_MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
+          </div>
+          {gear.warnings.map((w, i) => <Alert key={i} kind="danger" icon="warn">{w}</Alert>)}
+          <div className="grid-3">
+            <Stat value={`${gear.waterLiters} ל'`} label="מים לשאת" />
+            <Stat value={gear.sleepingBag.split(' ')[2] || ''} label="דירוג שק שינה" />
+            <Stat value={seg.hours || '–'} label="שעות הליכה" />
+          </div>
+          <div className="card"><div className="card__title"><Icon name="star" />תוספות ייחודיות למקטע ולעונה</div>
+            {gear.extras.length === 0 && <p className="small muted">אין תוספות מיוחדות – הציוד הבסיסי מספיק.</p>}
+            {gear.extras.map((x, i) => <div key={i} className={`gear-item gear-${x.level}`}><div className="bold">{x.level === 'must' ? '🔴' : x.level === 'rec' ? '🟠' : '🟢'} {x.item}</div><div className="tiny muted">{x.why}</div></div>)}
+          </div>
+          <div className="card small"><div><b>שק שינה:</b> {gear.sleepingBag}</div><div className="mt"><b>אוכל:</b> {gear.foodDays}</div></div>
+          <button className="btn btn--ghost btn--sm" onClick={() => navigate(`guide/gear?seg=${seg.id}&m=${month}`)}>לרשימת הציוד המלאה ←</button>
         </div>
       )}
 

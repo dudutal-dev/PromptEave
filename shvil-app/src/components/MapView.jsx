@@ -13,7 +13,7 @@ const ISRAEL_BOUNDS = [[29.45, 34.2], [33.35, 35.95]]
  * Imperative Leaflet wrapper.
  * props: segments, lines ([[lat,lon]...][]), pois [{lat,lon,icon,title,html}], user {lat,lon,accuracy,heading}, follow, base, onSegmentClick, fit, selectedId, height
  */
-export function MapView({ segments = [], lines = null, pois = [], user = null, follow = false, base = 'ihm', onSegmentClick, selectedId, className = 'map', fitTo, interactive = true, direction = 'sobo' }) {
+export function MapView({ segments = [], lines = null, pois = [], user = null, follow = false, base = 'ihm', onSegmentClick, selectedId, className = 'map', fitTo, interactive = true, direction = 'sobo', overlays = [] }) {
   const el = useRef(null)
   const map = useRef(null)
   const layers = useRef({})
@@ -24,7 +24,9 @@ export function MapView({ segments = [], lines = null, pois = [], user = null, f
     m.fitBounds(ISRAEL_BOUNDS, { padding: [10, 10] })
     L.control.scale({ imperial: false, position: 'bottomright' }).addTo(m)
     if (interactive) L.control.zoom({ position: 'topleft' }).addTo(m)
-    layers.current = { base: null, trail: L.layerGroup().addTo(m), schematic: L.layerGroup().addTo(m), markers: L.layerGroup().addTo(m), pois: L.layerGroup().addTo(m), user: L.layerGroup().addTo(m) }
+    layers.current = { base: null, trail: L.layerGroup().addTo(m), schematic: L.layerGroup().addTo(m), overlays: L.layerGroup().addTo(m), markers: L.layerGroup().addTo(m), pois: L.layerGroup().addTo(m), user: L.layerGroup().addTo(m) }
+    const onZoom = () => el.current?.classList.toggle('zoomed-out', m.getZoom() < 10)
+    m.on('zoomend', onZoom); onZoom()
     map.current = m
     setTimeout(() => m.invalidateSize(), 50)
     return () => { m.remove(); map.current = null }
@@ -78,6 +80,14 @@ export function MapView({ segments = [], lines = null, pois = [], user = null, f
     }
   }, [lines])
 
+  // overlays: [{points:[[lat,lon]], color, weight, dash, opacity}]
+  useEffect(() => {
+    const m = map.current; if (!m) return
+    const g = layers.current.overlays
+    g.clearLayers()
+    for (const o of overlays) if (o?.points?.length > 1) L.polyline(o.points, { color: o.color || '#16a34a', weight: o.weight || 5, opacity: o.opacity ?? 0.9, dashArray: o.dash, lineCap: 'round' }).addTo(g)
+  }, [overlays])
+
   // POIs
   useEffect(() => {
     const m = map.current; if (!m) return
@@ -97,7 +107,8 @@ export function MapView({ segments = [], lines = null, pois = [], user = null, f
     g.clearLayers()
     if (!user) return
     L.circle([user.lat, user.lon], { radius: user.accuracy || 0, color: '#1d4ed8', weight: 1, fillOpacity: 0.08 }).addTo(g)
-    const icon = L.divIcon({ className: '', html: `<div class="user-dot"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] })
+    const rot = user.heading != null ? `<div class="user-heading" style="transform:rotate(${user.heading}deg)"></div>` : ''
+    const icon = L.divIcon({ className: '', html: `<div class="user-wrap">${rot}<div class="user-dot"></div></div>`, iconSize: [18, 18], iconAnchor: [9, 9] })
     L.marker([user.lat, user.lon], { icon, zIndexOffset: 1000 }).addTo(g)
     if (follow) m.setView([user.lat, user.lon], Math.max(m.getZoom(), 14), { animate: true })
   }, [user, follow])

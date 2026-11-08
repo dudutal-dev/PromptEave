@@ -72,8 +72,10 @@ export function buildItinerary(allSegments, plan) {
     if (warn) notes.push(warn)
     if (shabbat) notes.push('שבת: אין תחבורה ציבורית, חנויות סגורות.')
     else if (isFriday(date)) notes.push('יום שישי: חנויות נסגרות מוקדם, תחבורה ציבורית עד הצהריים.')
+    const wet = [10, 11, 0, 1, 2, 3].includes(date.getMonth())
     for (const c of todays) {
       if (c.seg.water_caching_needed) notes.push(`הטמנת מים נדרשת (${c.seg.name_he}).`)
+      if (wet && regionGroup(c.seg.region) === 'negev' && /נחל|מכתש|קניון|שיטפ/.test([c.seg.name_he, ...(c.seg.hazards || [])].join(' '))) notes.push('סכנת שיטפון בעונת הגשמים – לבדוק תחזית ואזהרות רט"ג בבוקר לפני הכניסה לנחל.')
       if (c.seg.firing_zone) notes.push(`שטח אש: ${c.seg.firing_zone}`)
       if (c.seg.hazards?.length) notes.push(...c.seg.hazards.slice(0, 2))
     }
@@ -95,6 +97,7 @@ export function buildItinerary(allSegments, plan) {
   const totalKm = round1(days.reduce((a, d) => a + d.km, 0))
   const walking = days.filter((d) => !d.rest).length
   const cacheDays = days.filter((d) => d.notes?.some((n) => n.includes('הטמנת מים'))).length
+  const caches = days.filter((d) => !d.rest && d.segments.some((id) => allSegments.find((s) => s.id === id)?.water_caching_needed)).map((d) => ({ day: d.day, date: d.date, overnight: d.overnight, title: d.title, km: d.km }))
   const summary = {
     totalKm, days: days.length, walkingDays: walking, restDays: days.length - walking,
     startDate: days[0]?.date, endDate: days[days.length - 1]?.date,
@@ -103,7 +106,7 @@ export function buildItinerary(allSegments, plan) {
     budget: Math.round(days.length * (LODGING_COST[p.lodging] || 160) + cacheDays * 120),
     seasonIssues: days.filter((d) => d.notes?.some((n) => n.startsWith('סכנת חיים') || n.startsWith('חם מאוד') || n.startsWith('חום כבד'))).length,
   }
-  return { days, summary, plan: p }
+  return { days, summary, caches, plan: p }
 }
 
 function pickOvernight(seg, pref) {

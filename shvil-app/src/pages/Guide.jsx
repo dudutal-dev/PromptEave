@@ -7,13 +7,15 @@ import { HE_MONTHS_SHORT, HE_MONTHS } from '../lib/dates.js'
 import { LEVEL_CLS, LEVEL_HE } from '../lib/season.js'
 import logistics from '../data/logistics.json'
 import lodging from '../data/lodging.json'
+import { gearFor, BASE_GEAR, packWeight } from '../lib/gear.js'
+import apps from '../data/apps.json'
 
 const SECTIONS = [
-  ['seasons', '☀️', 'עונות ומזג אוויר'], ['water', '💧', 'מים והטמנות'], ['lodging', '🏕️', 'לינה'], ['safety', '🆘', 'בטיחות וחירום'],
-  ['gear', '🎒', 'ציוד'], ['budget', '💰', 'תקציב'], ['transport', '🚌', 'תחבורה והצטיידות'], ['nav', '🧭', 'סימון וניווט'], ['faq', '❓', 'שאלות נפוצות'], ['ethics', '🌿', 'טיול אחראי'],
+  ['seasons', '☀️', 'עונות ומזג אוויר'], ['angels', '😇', 'מלאכי שביל'], ['water', '💧', 'מים והטמנות'], ['lodging', '🏕️', 'לינה'], ['safety', '🆘', 'בטיחות וחירום'],
+  ['gear', '🎒', 'ציוד'], ['budget', '💰', 'תקציב'], ['transport', '🚌', 'תחבורה והצטיידות'], ['nav', '🧭', 'סימון וניווט'], ['faq', '❓', 'שאלות נפוצות'], ['ethics', '🌿', 'טיול אחראי'], ['apps', '📱', 'אפליקציות אחרות'],
 ]
 
-export default function Guide({ section = 'seasons', navigate }) {
+export default function Guide({ section = 'seasons', navigate, query = {} }) {
   const sec = SECTIONS.find((s) => s[0] === section) ? section : 'seasons'
   return (
     <div className="page stack">
@@ -24,12 +26,13 @@ export default function Guide({ section = 'seasons', navigate }) {
       {sec === 'water' && <Water />}
       {sec === 'lodging' && <Lodging navigate={navigate} />}
       {sec === 'safety' && <Safety />}
-      {sec === 'gear' && <Gear />}
+      {sec === 'gear' && <Gear query={query} />}
       {sec === 'budget' && <Budget />}
       {sec === 'transport' && <Transport />}
       {sec === 'nav' && <NavGuide />}
       {sec === 'faq' && <FAQ />}
       {sec === 'ethics' && <Ethics />}
+      {sec === 'apps' && <Apps />}
       <p className="tiny muted">המידע נאסף ממקורות ציבוריים (החברה להגנת הטבע, רשות הטבע והגנים, קהילות השביל ומדריכים) ועלול להשתנות. אמתו לפני היציאה.</p>
     </div>
   )
@@ -200,24 +203,42 @@ function Safety() {
   )
 }
 
-const DEFAULT_GEAR = [
-  { cat: 'נשיאה ולינה', items: ['תרמיל 45–65 ל\' עם חגורת מותן', 'כיסוי גשם לתרמיל / שק פנימי', 'אוהל קל / טארפ (רשת נגד יתושים בצפון)', 'שק שינה (°0 לנגב בחורף, °+7 לאביב)', 'מזרן מתנפח/מתקפל', 'כרית קטנה (אופציונלי)'] },
-  { cat: 'מים', items: ['קיבולת 5–6 ליטר (בקבוקים + שלוקר)', 'טבליות / פילטר לטיהור (מעיינות בצפון)', 'ג\'ריקנים/בקבוקים להטמנה (נגב)', 'מלחים / אבקת אלקטרוליטים'] },
-  { cat: 'ביגוד', items: ['נעלי הליכה מוכרות (לא חדשות!)', 'סנדלים/כפכפים לערב ולמעברי מים', '2–3 זוגות גרביים (מרינו)', 'חולצה ארוכה בהירה נגד שמש', 'מכנסי הליכה + מכנסיים קצרים', 'פליז / שכבת חום', 'מעיל רוח-גשם', 'כובע רחב שוליים + באף', 'כפפות וכובע צמר (חורף)', 'גרביונים/חזייה ספורטיבית', 'חוטיני / בגד ים (כנרת, אילת)'] },
-  { cat: 'ניווט ותקשורת', items: ['טלפון + אפליקציית מפות לא-מקוונת', 'סוללת גיבוי 10,000–20,000mAh + כבלים', 'מפות סימון שבילים מודפסות / ספר השביל', 'מצפן גיבוי', 'פנס ראש + סוללות', 'משרוקית'] },
-  { cat: 'בישול ואוכל', items: ['גזייה קטנה + מיכל גז (לקנות בארץ)', 'סיר קטן + כף/מזלג', 'מצית + גפרורים עמידים למים', 'אוכל ל-2–5 ימים (נגב: עד 6)', 'שקיות אשפה (משאירים נקי)'] },
-  { cat: 'בריאות והיגיינה', items: ['ערכת עזרה ראשונה: פלסטרים לשלפוחיות, תחבושת אלסטית, משככי כאבים, אנטיהיסטמין', 'קרם הגנה SPF50 + שפתון', 'נייר טואלט + כף חפירה קטנה', 'סבון ביולוגי, מברשת + משחת שיניים', 'תרופות אישיות', 'משחת אנטי-שפשוף / וזלין', 'ג\'ל חיטוי ידיים'] },
-  { cat: 'שונות', items: ['מקלות הליכה', 'משקפי שמש', 'סכין רב-שימושית', 'חבל דק / חוטי כביסה + אטבים', 'תעודת זהות, כרטיס אשראי, מזומן', 'כרטיס מנוי רט"ג (אופציונלי, חוסך כניסות)', 'ערכת תיקונים: סרט דביק, חוט ומחט', 'פנקס ועט ליומן'] },
-]
-function Gear() {
-  const { gear, setGear } = useApp()
-  const total = DEFAULT_GEAR.reduce((a, c) => a + c.items.length, 0)
-  const checked = Object.values(gear).filter(Boolean).length
+function Gear({ query }) {
+  const { gear, setGear, segments, plan } = useApp()
+  const [segId, setSegId] = useState(query.seg ? Number(query.seg) : (plan.fromId || segments[0]?.id || ''))
+  const [month, setMonth] = useState(query.m != null ? Number(query.m) : (plan.startDate ? new Date(plan.startDate).getMonth() : new Date().getMonth()))
+  const seg = segments.find((s) => s.id === Number(segId))
+  const rec = useMemo(() => gearFor(seg, month), [seg, month])
+  const total = BASE_GEAR.reduce((a, c) => a + c.items.length, 0)
+  const checked = BASE_GEAR.reduce((a, c) => a + c.items.filter((it) => gear[`${c.cat}:${it}`]).length, 0)
   const toggle = (k) => setGear({ ...gear, [k]: !gear[k] })
+  const [baseKg, setBaseKg] = useState(8)
   return (
     <div className="stack">
-      <div className="card"><div className="row between"><b>רשימת הציוד שלי</b><span>{checked}/{total}</span></div><div className="progress mt"><div style={{ width: `${(checked / total) * 100}%` }} /></div><p className="tiny muted mt">הסימונים נשמרים במכשיר. משקל יעד ללא מים ואוכל: 7–10 ק"ג. בנגב, עם 6 ליטר מים ואוכל ל-4 ימים, המשקל מגיע ל-15–20 ק"ג.</p></div>
-      {DEFAULT_GEAR.map((c) => (
+      <div className="card card--glow">
+        <div className="card__title"><Icon name="route" />התאמה למקטע ולעונה</div>
+        <div className="grid-2">
+          <div className="field"><label>מקטע</label><select className="select" value={segId} onChange={(e) => setSegId(e.target.value)}>{segments.map((s) => <option key={s.id} value={s.id}>{s.id}. {s.name_he}</option>)}</select></div>
+          <div className="field"><label>חודש</label><select className="select" value={month} onChange={(e) => setMonth(Number(e.target.value))}>{HE_MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select></div>
+        </div>
+        {rec && (
+          <div className="stack mt">
+            {rec.warnings.map((w, i) => <Alert key={i} kind="danger" icon="warn">{w}</Alert>)}
+            <div className="grid-3">
+              <Stat value={`${rec.waterLiters} ל'`} label="מים לשאת" />
+              <Stat value={packWeight({ baseKg, liters: rec.waterLiters, foodDays: rec.group === 'negev' ? 3 : 1.5 })} label='ק"ג על הגב (משוער)' />
+              <Stat value={rec.group === 'negev' ? '3' : '1.5'} label="ימי אוכל" />
+            </div>
+            <div className="field"><label>משקל בסיס של הציוד (ללא מים ואוכל): <b>{baseKg} ק"ג</b></label><input className="range" type="range" min={5} max={16} step={0.5} value={baseKg} onChange={(e) => setBaseKg(Number(e.target.value))} /></div>
+            <div><b>שק שינה:</b> {rec.sleepingBag}</div>
+            <div><b>אוכל:</b> {rec.foodDays}</div>
+            {rec.extras.map((x, i) => <div key={i} className={`gear-item gear-${x.level}`}><div className="bold">{x.level === 'must' ? '🔴' : x.level === 'rec' ? '🟠' : '🟢'} {x.item}</div><div className="tiny muted">{x.why}</div></div>)}
+            <p className="tiny muted">🔴 חובה · 🟠 מומלץ · 🟢 נחמד שיש</p>
+          </div>
+        )}
+      </div>
+      <div className="card"><div className="row between"><b>רשימת הציוד הבסיסית שלי</b><span>{checked}/{total}</span></div><div className="progress mt"><div style={{ width: `${(checked / total) * 100}%` }} /></div><p className="tiny muted mt">הסימונים נשמרים במכשיר. משקל יעד ללא מים ואוכל: 7–10 ק"ג.</p></div>
+      {BASE_GEAR.map((c) => (
         <div key={c.cat} className="card">
           <div className="card__title">{c.cat}</div>
           {c.items.map((it) => { const k = `${c.cat}:${it}`; return <label key={k} className={`check ${gear[k] ? 'on' : ''}`}><input type="checkbox" checked={!!gear[k]} onChange={() => toggle(k)} /><span>{it}</span></label> })}
@@ -318,6 +339,31 @@ function Ethics() {
       <Acc title="🐕 כלבים בשביל"><p>{r.dogs_he}</p></Acc>
       <Acc title="🕯️ שבת וחגים"><p>{r.shabbat_holidays_he}</p></Acc>
       <Acc title="🕌 אתרים דתיים ויישובים"><p>{r.religious_sites_he}</p></Acc>
+    </div>
+  )
+}
+
+function Apps() {
+  const ideas = (apps.feature_ideas || []).filter((f) => !f.offered_by_others).sort((a, b) => b.value - a.value)
+  return (
+    <div className="stack">
+      <div className="card"><p className="small">{apps.comparison_he}</p></div>
+      <Section title="מה האפליקציה הזו מוסיפה (לא קיים אצל אחרים)" icon="star">
+        {ideas.map((f, i) => <div key={i} className="card card--flat" style={{ padding: 12 }}><div className="row between"><b>{f.title_he}</b><span className="chip chip--orange">{'★'.repeat(f.value)}</span></div><p className="small muted mt">{f.description_he}</p></div>)}
+      </Section>
+      <Section title="אפליקציות ומקורות קיימים" icon="layers">
+        {(apps.apps || []).map((a, i) => (
+          <Acc key={i} title={a.name}>
+            <div className="tiny muted mb">{a.developer} · {a.platforms?.join(', ')} · {a.price_he}</div>
+            {a.rating && <div className="tiny mb">⭐ {a.rating}</div>}
+            <b>מה יש:</b><List items={a.features_he} />
+            {a.complaints_he?.length > 0 && <><b className="mt" style={{ display: 'block' }}>תלונות נפוצות:</b><List items={a.complaints_he} /></>}
+            {a.notes_he && <p className="tiny mt">{a.notes_he}</p>}
+            {a.url && <a className="tiny" href={a.url.split(' | ')[0]} target="_blank" rel="noreferrer">קישור</a>}
+          </Acc>
+        ))}
+      </Section>
+      <p className="tiny muted">מבוסס על חיפוש בחנויות האפליקציות ובביקורות (נובמבר 2026). דירוגים ומחירים משתנים.</p>
     </div>
   )
 }

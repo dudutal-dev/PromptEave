@@ -12,11 +12,12 @@ export function AppProvider({ children }) {
   const [gear, setGear] = useLocalStorage('gear', {})
   const [notes, setNotes] = useLocalStorage('segNotes', {})
   const [prefs, setPrefs] = useLocalStorage('prefs', { base: 'ihm', units: 'metric' })
+  const [angels, setAngels] = useLocalStorage('myAngels', []) // {id, name, settlement, phone, segId, notes, status}
   const itinerary = useMemo(() => (plan.startDate ? buildItinerary(segments, plan) : null), [segments, plan])
   const totalKm = useMemo(() => segments.reduce((a, s) => a + (s.distance_km || 0), 0), [segments])
   const doneKm = useMemo(() => segments.filter((s) => done.includes(s.id)).reduce((a, s) => a + s.distance_km, 0), [segments, done])
   const toggleDone = (id) => setDone((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]))
-  const value = { segments, meta: segData.meta || {}, plan, setPlan, itinerary, done, toggleDone, journal, setJournal, gear, setGear, notes, setNotes, prefs, setPrefs, totalKm, doneKm }
+  const value = { segments, meta: segData.meta || {}, plan, setPlan, itinerary, done, toggleDone, journal, setJournal, gear, setGear, notes, setNotes, prefs, setPrefs, angels, setAngels, totalKm, doneKm }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 export const useApp = () => useContext(Ctx)

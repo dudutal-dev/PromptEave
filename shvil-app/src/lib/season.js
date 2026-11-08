@@ -1,8 +1,8 @@
 // Baseline month suitability per region (1 = Jan). Refined by the research data in src/data/logistics.json when present.
 export const REGION_GROUPS = {
-  north: ['גליל עליון', 'גליל תחתון', 'כרמל', 'עמקים'],
-  center: ['שרון', 'מישור החוף', 'שפלה', 'הרי ירושלים'],
-  negev: ['צפון הנגב', 'הר הנגב', 'אילת', 'הערבה', 'נגב'],
+  north: ['חרמון', 'גליל', 'כרמל', 'עמק', 'כנרת'],
+  center: ['שרון', 'מישור החוף', 'שפלה', 'שפלת', 'ירושלים', 'לכיש'],
+  negev: ['נגב', 'אילת', 'ערבה', 'מדבר יהודה', 'ים המלח', 'סדום'],
 }
 export function regionGroup(region = '') {
   for (const [g, list] of Object.entries(REGION_GROUPS)) if (list.some((r) => region.includes(r))) return g

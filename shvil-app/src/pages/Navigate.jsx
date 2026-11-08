@@ -11,7 +11,7 @@ import logistics from '../data/logistics.json'
 import lodging from '../data/lodging.json'
 
 export default function Navigate() {
-  const { segments, plan } = useApp()
+  const { segments, plan, itinerary } = useApp()
   const toast = useToast()
   const { heading, status, request } = useCompass()
   const [gpsOn, setGpsOn] = useState(true)
@@ -108,6 +108,7 @@ export default function Navigate() {
               <button className="btn btn--sm" onClick={() => { navigator.clipboard?.writeText(`${pos.lat.toFixed(6)}, ${pos.lon.toFixed(6)}`); toast('הקואורדינטות הועתקו') }}>העתקה</button>
               <a className="btn btn--sm btn--blue" href={navLinks(pos.lat, pos.lon, 'שביל ישראל').whatsapp} target="_blank" rel="noreferrer">שיתוף מיקום ב-WhatsApp</a>
               <a className="btn btn--sm" href={navLinks(pos.lat, pos.lon).ihm} target="_blank" rel="noreferrer">IHM</a>
+              <a className="btn btn--sm btn--primary" href={`https://wa.me/?text=${encodeURIComponent(checkinText(pos, itinerary, segments))}`} target="_blank" rel="noreferrer">✅ צ'ק-אין יומי למשפחה</a>
             </div>
           </div>
         ) : <p className="small muted">{gpsOn ? 'מחפש לוויינים… (בחוץ, עם שמיים פתוחים, זה לוקח עד דקה)' : 'ה-GPS כבוי'}</p>}
@@ -150,6 +151,18 @@ export default function Navigate() {
       </div>
     </div>
   )
+}
+
+function checkinText(pos, itinerary, segments) {
+  const today = itinerary?.days.find((d) => d.date.toDateString() === new Date().toDateString())
+  const tomorrow = itinerary?.days.find((d) => d.date.toDateString() === new Date(Date.now() + 86400000).toDateString())
+  const n = nearestSeg(pos, segments)
+  return [`✅ צ'ק-אין משביל ישראל – ${new Date().toLocaleDateString('he-IL')}`, `אני בסדר! מיקומי: https://maps.google.com/?q=${pos.lat.toFixed(5)},${pos.lon.toFixed(5)}`, n ? `באזור ${n}` : '', today ? `היום: ${today.rest ? 'יום מנוחה' : today.title} (${today.km} ק"מ) · לינה: ${today.overnight}` : '', tomorrow ? `מחר: ${tomorrow.rest ? 'יום מנוחה' : tomorrow.title}` : '', 'צ\'ק-אין הבא מחר בערב 🙂'].filter(Boolean).join('\n')
+}
+function nearestSeg(pos, segments) {
+  let best = null
+  for (const s of segments) { if (!s.start?.lat) continue; const d = haversine(pos, s.start); if (!best || d < best.d) best = { d, s } }
+  return best ? `מקטע ${best.s.id} (${best.s.name_he})` : ''
 }
 
 function Compass({ heading = 0, targetRel }) {

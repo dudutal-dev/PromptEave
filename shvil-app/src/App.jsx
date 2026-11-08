@@ -13,8 +13,10 @@ import Journal from './pages/Journal.jsx'
 import Settings from './pages/Settings.jsx'
 const MapPage = lazy(() => import('./pages/MapPage.jsx'))
 const Guide = lazy(() => import('./pages/Guide.jsx'))
+const Angels = lazy(() => import('./pages/Angels.jsx'))
+const Certificate = lazy(() => import('./pages/Certificate.jsx'))
 
-const TITLES = { home: 'שביל ישראל', segments: 'מקטעי השביל', map: 'מפה', plan: 'תכנון המסע', nav: 'ניווט', guide: 'המדריך', journal: 'יומן המסע', settings: 'הגדרות' }
+const TITLES = { home: 'שביל ישראל', segments: 'מקטעי השביל', map: 'מפה', plan: 'תכנון המסע', nav: 'ניווט', guide: 'המדריך', journal: 'יומן המסע', settings: 'הגדרות', certificate: 'תעודה' }
 
 export default function App() {
   const { route, navigate, back } = useRouter()
@@ -31,8 +33,9 @@ export default function App() {
     case 'map': page = <MapPage query={route.query} navigate={navigate} />; break
     case 'plan': page = <Planner navigate={navigate} />; break
     case 'nav': page = <Navigate navigate={navigate} />; break
-    case 'guide': page = <Guide section={sub} navigate={navigate} />; break
+    case 'guide': page = sub === 'angels' ? <Angels navigate={navigate} /> : <Guide section={sub} navigate={navigate} query={route.query} />; break
     case 'journal': page = <Journal navigate={navigate} />; break
+    case 'certificate': page = <Certificate />; break
     case 'settings': page = <Settings theme={theme} setTheme={setTheme} />; break
     default: page = <Home navigate={navigate} />
   }
